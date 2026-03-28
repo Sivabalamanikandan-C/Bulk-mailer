@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Smart base URL with fallback
 const getBaseURL = () => {
-  return import.meta.env.VITE_API_URL || "http://localhost:5000";
+  return import.meta.env.VITE_API_URL || "https://bulkmailerbackend.onrender.com";
 };
 
 let currentBaseURL = getBaseURL();
