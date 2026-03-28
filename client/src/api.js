@@ -1,57 +1,51 @@
 import axios from "axios";
 
-// Smart base URL with fallback
-const getBaseURL = () => {
-  return import.meta.env.VITE_API_URL || "https://bulkmailerbackend.onrender.com";
-};
+const DEFAULT_API_URL = "https://bulkmailerbackend.onrender.com";
+const RETRYABLE_METHODS = new Set(["get", "head", "options"]);
 
-let currentBaseURL = getBaseURL();
+const normalizeBaseURL = (value) =>
+  String(value || DEFAULT_API_URL)
+    .trim()
+    .replace(/\/+$/, "");
 
-// Test connection function
-const testConnection = async (baseURL) => {
-  try {
-    await axios.get(`${baseURL}/`, { timeout: 5000 });
-    return true;
-  } catch {
-    return false;
-  }
-};
+export const API_BASE_URL = normalizeBaseURL(import.meta.env.VITE_API_URL);
 
-console.log("🔗 API using local backend: http://localhost:5000");
+console.log(`API base URL: ${API_BASE_URL}`);
 
 const API = axios.create({
-  baseURL: currentBaseURL,
+  baseURL: API_BASE_URL,
+  timeout: 10000,
   headers: {
-    "Content-Type": "application/json"
-  }
+    "Content-Type": "application/json",
+  },
 });
 
-// Add request interceptor to include token
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
-// Response interceptor with retry logic
 API.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config || {};
+    const requestMethod = String(originalRequest.method || "get").toLowerCase();
+    const shouldRetryMethod = RETRYABLE_METHODS.has(requestMethod);
 
-    // If it's a network or 5xx server error, and we haven't already retried
     if (
-      (error.code === 'ERR_NETWORK' || error.response?.status >= 500) &&
+      shouldRetryMethod &&
+      (error.code === "ERR_NETWORK" || error.response?.status >= 500) &&
       !originalRequest._retry
     ) {
       originalRequest._retry = true;
+      console.log("Backend request failed. Retrying in 1 second...");
 
-      console.log('🔄 Backend request failed. Retrying in 1 second...');
-
-      // Wait for 1 second before retrying
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       return API(originalRequest);
     }

@@ -1,7 +1,7 @@
+import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import compression from "compression";
-import dotenv from "dotenv";
 
 import createCorsMiddleware from "./middleware/corsMiddleware.js";
 import mailRoutes from "./routes/mailRoutes.js";
@@ -13,8 +13,6 @@ import errorMiddleware from "./middleware/errorMiddleware.js";
 import cron from 'node-cron';
 import Campaign from './models/Campaign.js';
 import { processCampaignSend, sendMail, verifyMailSetup } from './controllers/mailcontroller.js';
-
-dotenv.config();
 
 const app = express();
 
